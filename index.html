@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>To-Do List with Alarm & Due Time</title>
+<!-- Google Fonts for styling -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f4f6f8;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 30px;
+  }
+
+  .container {
+    background-color: #fff;
+    width: 100%;
+    max-width: 750px;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 24px;
+  }
+
+  /* Input area: task input, alarm button (circular), add button */
+  .input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  #taskInput {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
+    border: 2px solid #e9ecef;
+    border-radius: 5px 0 0 5px;
+    outline: none;
+  }
+
+  #taskInput:focus {
+    border-color: #007BFF;
+  }
+
+  #alarmBtn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid #007BFF;
+    background-color: #007BFF;
+    color: #fff;
+    font-size: 18px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #alarmBtn:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+    transform: scale(1.05);
+  }
+
+  #alarmBtn.active {
+    background-color: #28a745;
+    border-color: #28a745;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  #addTaskBtn {
+    padding: 12px 20px;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 0 5px 5px 0;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: background-color 0.3s;
+    height: 46px;
+  }
+
+  #addTaskBtn:hover {
+    background-color: #0056b3;
+  }
+
+  /* Alarm time picker popup */
+  .alarm-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #007BFF;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    margin-top: 5px;
+  }
+
+  .alarm-picker h4 {
+    margin-bottom: 10px;
+    color: #333;
+    text-align: center;
+  }
+
+  .alarm-picker input[type="datetime-local"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  .alarm-picker-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .alarm-picker button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
+
+  .alarm-picker .set-btn {
+    background-color: #28a745;
+    color: white;
+  }
+
+  .alarm-picker .set-btn:hover {
+    background-color: #218838;
+  }
+
+  .alarm-picker .cancel-btn {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  .alarm-picker .cancel-btn:hover {
+    background-color: #5a6268;
+  }
+
+  /* Task-specific alarm picker */
+  .task-alarm-picker {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 2px solid #007BFF;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    margin-top: 5px;
+    min-width: 250px;
+  }
+
+  /* Task list styles */
+  ul.todo-list {
+    list-style: none;
+  }
+
+  .todo-item {
+    background-color: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    border-left: 4px solid #007BFF;
+    position: relative;
+  }
+
+  .todo-item.has-alarm {
+    border-left-color: #28a745;
+  }
+
+  .todo-item.completed {
+    border-left-color: #6c757d;
+  }
+
+  /* Top part: task name & buttons */
+  .task-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .task-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+
+  .task-text {
+    font-size: 16px;
+    margin-left: 10px;
+    color: #333;
+    font-weight: 500;
+  }
+
+  .task-text.completed {
+    text-decoration: line-through;
+    color: #6c757d;
+  }
+
+  /* Buttons: Alarm, Complete, Delete */
+  .buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .task-button {
+    border: none;
+    background: rgba(0,0,0,0.1);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    position: relative;
+  }
+
+  .task-button:hover {
+    background-color: rgba(0,0,0,0.2);
+    transform: scale(1.1);
+  }
+
+  .complete-btn:hover {
+    background-color: rgba(40, 167, 69, 0.2);
+  }
+
+  .delete-btn:hover {
+    background-color: rgba(220, 53, 69, 0.2);
+  }
+
+  /* Due date and remaining time display */
+  .task-details {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    font-size: 13px;
+    color: #555;
+    background: rgba(0,0,0,0.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+
+  .due-date {
+    font-weight: 500;
+    color: #007BFF;
+    margin-bottom: 4px;
+  }
+
+  .remaining-time {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    color: #28a745;
+  }
+
+  .remaining-time.urgent {
+    color: #dc3545;
+    animation: blink 1s infinite;
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+  }
+
+  /* Filter buttons: Active / Completed */
+  .filter-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .filter-buttons button {
+    padding: 8px 15px;
+    border: none;
+    background-color: #6c757d;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
+
+  .filter-buttons button:hover,
+  .filter-buttons button.active {
+    background-color: #495057;
+  }
+
+  @media(max-width: 750px){
+    body {
+      padding: 15px;
+    }
+    
+    .input-group {
+      flex-wrap: wrap;
+    }
+    
+    #taskInput {
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+    
+    #addTaskBtn {
+      border-radius: 5px;
+      margin-left: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>My To-Do List</h1>
+  <!-- Input area: task, alarm (circle button), add -->
+  <div class="input-group">
+    <input type="text" id="taskInput" placeholder="Enter a new task..." />
+    <button id="alarmBtn" title="Set Alarm Time">⏰</button>
+    <button id="addTaskBtn">Add</button>
+  </div>
+
+  <!-- Filter buttons: Active, Completed -->
+  <div class="filter-buttons">
+    <button id="showActiveBtn" class="active">Active Tasks</button>
+    <button id="showCompletedBtn">Completed Tasks</button>
+  </div>
+
+  <!-- Tasks list -->
+  <ul class="todo-list" id="todoList"></ul>
+</div>
+
+<script>
+const taskInput = document.getElementById('taskInput');
+const addBtn = document.getElementById('addTaskBtn');
+const todoList = document.getElementById('todoList');
+const alarmBtn = document.getElementById('alarmBtn');
+const showActiveBtn = document.getElementById('showActiveBtn');
+const showCompletedBtn = document.getElementById('showCompletedBtn');
+
+let tasks = [];
+let currentAlarmTime = null;
+let alarmPicker = null;
+let taskAlarmPickers = {};
+
+// Create and show alarm time picker
+function showAlarmPicker() {
+  // Remove existing picker if any
+  if (alarmPicker) {
+    alarmPicker.remove();
+    alarmPicker = null;
+    alarmBtn.classList.remove('active');
+    return;
+  }
+
+  alarmPicker = document.createElement('div');
+  alarmPicker.className = 'alarm-picker';
+  
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 1); // Default to 1 minute from now
+  const defaultTime = now.toISOString().slice(0, 16);
+
+  alarmPicker.innerHTML = `
+    <h4>🕐 Set Alarm Time</h4>
+    <input type="datetime-local" id="alarmTimeInput" value="${defaultTime}" min="${new Date().toISOString().slice(0, 16)}">
+    <div class="alarm-picker-buttons">
+      <button class="set-btn" onclick="setAlarmTime()">Set Alarm</button>
+      <button class="cancel-btn" onclick="cancelAlarm()">Cancel</button>
+    </div>
+  `;
+
+  document.querySelector('.input-group').appendChild(alarmPicker);
+  alarmBtn.classList.add('active');
+  
+  // Focus the datetime input
+  setTimeout(() => {
+    document.getElementById('alarmTimeInput').focus();
+  }, 100);
+}
+
+// Set alarm time
+function setAlarmTime() {
+  const timeInput = document.getElementById('alarmTimeInput');
+  if (timeInput.value) {
+    currentAlarmTime = new Date(timeInput.value);
+    alarmBtn.style.backgroundColor = '#28a745';
+    alarmBtn.style.borderColor = '#28a745';
+    alarmBtn.title = `Alarm set for ${currentAlarmTime.toLocaleString()}`;
+  }
+  cancelAlarm();
+}
+
+// Cancel alarm picker
+function cancelAlarm() {
+  if (alarmPicker) {
+    alarmPicker.remove();
+    alarmPicker = null;
+    alarmBtn.classList.remove('active');
+    if (!currentAlarmTime) {
+      alarmBtn.style.backgroundColor = '#007BFF';
+      alarmBtn.style.borderColor = '#007BFF';
+      alarmBtn.title = 'Set Alarm Time';
+    }
+  }
+}
+
+// Clear current alarm
+function clearCurrentAlarm() {
+  currentAlarmTime = null;
+  alarmBtn.style.backgroundColor = '#007BFF';
+  alarmBtn.style.borderColor = '#007BFF';
+  alarmBtn.title = 'Set Alarm Time';
+}
+
+alarmBtn.onclick = showAlarmPicker;
+
+// Add task with optional alarm
+function addTask() {
+  const text = taskInput.value.trim();
+  if (text === '') return;
+  
+  const newTask = {
+    id: Date.now(),
+    text,
+    completed: false,
+    dueDate: currentAlarmTime ? new Date(currentAlarmTime) : null,
+    remainingTime: null,
+    remainingInterval: null,
+    alarmTime: currentAlarmTime ? new Date(currentAlarmTime) : null,
+    alarmTriggered: false,
+    alarmTimeout: null
+  };
+  
+  tasks.push(newTask);
+  taskInput.value = '';
+  clearCurrentAlarm();
+  renderTasks();
+  
+  if (newTask.alarmTime) {
+    setupAlarm(newTask);
+  }
+}
+
+addBtn.onclick = addTask;
+taskInput.onkeypress = (e) => { if (e.key === 'Enter') addTask(); };
+
+// Filter Tasks
+let filter = 'active';
+function setFilter(type) {
+  filter = type;
+  showActiveBtn.classList.toggle('active', filter === 'active');
+  showCompletedBtn.classList.toggle('active', filter === 'completed');
+  renderTasks();
+}
+
+showActiveBtn.onclick = () => setFilter('active');
+showCompletedBtn.onclick = () => setFilter('completed');
+
+function createTaskElement(task) {
+  const li = document.createElement('li');
+  li.className = 'todo-item';
+  li.dataset.taskId = task.id; // Store task ID on the element
+  
+  if (task.alarmTime && !task.completed) {
+    li.classList.add('has-alarm');
+  }
+  
+  if (task.completed) {
+    li.classList.add('completed');
+  }
+
+  // Top: task text + buttons
+  const topDiv = document.createElement('div');
+  topDiv.className = 'task-top';
+
+  const taskInfoDiv = document.createElement('div');
+  taskInfoDiv.className = 'task-info';
+
+  const taskSpan = document.createElement('span');
+  taskSpan.className = 'task-text';
+  taskSpan.textContent = task.text;
+  if (task.completed) taskSpan.classList.add('completed');
+
+  taskInfoDiv.appendChild(taskSpan);
+
+  // Buttons: alarm, complete, delete
+  const buttonsDiv = document.createElement('div');
+  buttonsDiv.className = 'buttons';
+
+  // Alarm button
+  const alarmTaskBtn = document.createElement('button');
+  alarmTaskBtn.className = 'task-button alarm-btn';
+  alarmTaskBtn.innerHTML = task.alarmTime ? '⏰' : '🔔';
+  alarmTaskBtn.title = task.alarmTime ? `Alarm: ${task.alarmTime.toLocaleString()}` : 'Set Alarm';
+  alarmTaskBtn.onclick = () => setTaskAlarm(task);
+
+  // Complete toggle
+  const completeBtn = document.createElement('button');
+  completeBtn.className = 'task-button complete-btn';
+  completeBtn.innerHTML = task.completed ? '✅' : '✔️';
+  completeBtn.title = task.completed ? 'Mark as Active' : 'Mark as Complete';
+  completeBtn.onclick = () => {
+    task.completed = !task.completed;
+    if (task.remainingInterval) {
+      clearInterval(task.remainingInterval);
+      task.remainingInterval = null;
+    }
+    if (task.alarmTimeout) {
+      clearTimeout(task.alarmTimeout);
+      task.alarmTimeout = null;
+    }
+    renderTasks();
+  };
+
+  // Delete
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'task-button delete-btn';
+  deleteBtn.innerHTML = '🗑️';
+  deleteBtn.title = 'Delete Task';
+  deleteBtn.onclick = () => {
+    if (task.alarmTimeout) clearTimeout(task.alarmTimeout);
+    if (task.remainingInterval) clearInterval(task.remainingInterval);
+    tasks = tasks.filter(t => t.id !== task.id);
+    renderTasks();
+  };
+
+  buttonsDiv.appendChild(alarmTaskBtn);
+  buttonsDiv.appendChild(completeBtn);
+  buttonsDiv.appendChild(deleteBtn);
+
+  topDiv.appendChild(taskInfoDiv);
+  topDiv.appendChild(buttonsDiv);
+  li.appendChild(topDiv);
+
+  // Show due date and remaining time if alarm is set and not completed
+  if (!task.completed && task.dueDate) {
+    const detailsDiv = document.createElement('div');
+    detailsDiv.className = 'task-details';
+
+    const dueSpan = document.createElement('div');
+    dueSpan.className = 'due-date';
+    dueSpan.textContent = `📅 Due: ${task.dueDate.toLocaleString()}`;
+
+    const remainingSpan = document.createElement('div');
+    remainingSpan.className = 'remaining-time';
+    remainingSpan.id = `remaining-${task.id}`;
+    remainingSpan.textContent = '⏱️ Calculating...';
+
+    detailsDiv.appendChild(dueSpan);
+    detailsDiv.appendChild(remainingSpan);
+    li.appendChild(detailsDiv);
+
+    startCountdown(task);
+  }
+  
+  return li;
+}
+
+// Set alarm for existing task with popup picker
+function setTaskAlarm(task) {
+  // Remove existing picker if any
+  if (taskAlarmPickers[task.id]) {
+    taskAlarmPickers[task.id].remove();
+    delete taskAlarmPickers[task.id];
+    return;
+  }
+
+  // Find the task element
+  const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+  if (!taskElement) return;
+
+  const alarmPicker = document.createElement('div');
+  alarmPicker.className = 'alarm-picker'; // Use same class as main alarm picker
+  
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 1);
+  const defaultTime = task.alarmTime ? task.alarmTime.toISOString().slice(0, 16) : now.toISOString().slice(0, 16);
+
+  alarmPicker.innerHTML = `
+    <h4>🕐 Set Alarm Time</h4>
+    <input type="datetime-local" id="taskAlarmTimeInput-${task.id}" value="${defaultTime}" min="${new Date().toISOString().slice(0, 16)}">
+    <div class="alarm-picker-buttons">
+      <button class="set-btn" onclick="setTaskAlarmTime(${task.id})">Set Alarm</button>
+      <button class="cancel-btn" onclick="cancelTaskAlarm(${task.id})">Cancel</button>
+    </div>
+  `;
+
+  taskElement.style.position = 'relative';
+  taskElement.appendChild(alarmPicker);
+  taskAlarmPickers[task.id] = alarmPicker;
+  
+  // Focus the datetime input
+  setTimeout(() => {
+    document.getElementById(`taskAlarmTimeInput-${task.id}`).focus();
+  }, 100);
+}
+
+// Set task alarm time
+function setTaskAlarmTime(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  const timeInput = document.getElementById(`taskAlarmTimeInput-${taskId}`);
+  
+  if (timeInput && timeInput.value) {
+    const alarmTime = new Date(timeInput.value);
+    if (alarmTime > new Date()) {
+      // Clear any existing alarm
+      if (task.alarmTimeout) clearTimeout(task.alarmTimeout);
+      if (task.remainingInterval) clearInterval(task.remainingInterval);
+      
+      // Set new alarm
+      task.alarmTime = alarmTime;
+      task.dueDate = alarmTime;
+      task.alarmTriggered = false;
+      task.remainingInterval = null;
+      
+      setupAlarm(task);
+      renderTasks();
+    } else {
+      alert('Please select a future date and time.');
+    }
+  }
+  cancelTaskAlarm(taskId);
+}
+
+// Cancel task alarm picker
+function cancelTaskAlarm(taskId) {
+  if (taskAlarmPickers[taskId]) {
+    taskAlarmPickers[taskId].remove();
+    delete taskAlarmPickers[taskId];
+  }
+}
+
+// Start countdown timer
+function startCountdown(task) {
+  if (task.remainingInterval) clearInterval(task.remainingInterval);
+  
+  task.remainingInterval = setInterval(() => {
+    if (!task.dueDate || task.completed) {
+      clearInterval(task.remainingInterval);
+      task.remainingInterval = null;
+      return;
+    }
+    
+    const now = new Date();
+    const diffMs = task.dueDate - now;
+    
+    if (diffMs <= 0) {
+      clearInterval(task.remainingInterval);
+      task.remainingInterval = null;
+      
+      const remainingEl = document.getElementById(`remaining-${task.id}`);
+      if (remainingEl) {
+        remainingEl.textContent = '⏰ Time\'s up!';
+        remainingEl.classList.add('urgent');
+      }
+      return;
+    }
+    
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    
+    const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    
+    const remainingEl = document.getElementById(`remaining-${task.id}`);
+    if (remainingEl) {
+      remainingEl.textContent = `⏱️ Time left: ${timeString}`;
+      
+      // Add urgent class if less than 1 hour remaining
+      if (diffMs < 3600000) {
+        remainingEl.classList.add('urgent');
+      } else {
+        remainingEl.classList.remove('urgent');
+      }
+    }
+  }, 1000);
+}
+
+// Setup alarm notification
+function setupAlarm(task) {
+  if (task.alarmTimeout) clearTimeout(task.alarmTimeout);
+  
+  const now = new Date();
+  const msUntilAlarm = task.alarmTime - now;
+  
+  if (msUntilAlarm > 0) {
+    task.alarmTimeout = setTimeout(() => {
+      if (!task.completed && !task.alarmTriggered) {
+        task.alarmTriggered = true;
+        showAlarmNotification(task);
+        playAlarmSound();
+      }
+    }, msUntilAlarm);
+  }
+}
+
+// Show alarm notification
+function showAlarmNotification(task) {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 10000;
+    animation: slideInRight 0.5s ease-out;
+    max-width: 300px;
+    font-family: 'Roboto', sans-serif;
+  `;
+  
+  notification.innerHTML = `
+    <div style="font-size: 24px; margin-bottom: 10px;">🚨 ALARM!</div>
+    <div style="font-weight: bold; margin-bottom: 8px;">${task.text}</div>
+    <div style="font-size: 14px; opacity: 0.9;">Scheduled for: ${task.alarmTime.toLocaleString()}</div>
+    <button onclick="this.parentElement.remove()" style="
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    ">×</button>
+  `;
+  
+  // Add animation styles
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 10 seconds
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 10000);
+  
+  // Browser notification if supported
+  if ('Notification' in window) {
+    if (Notification.permission === 'granted') {
+      new Notification('Task Alarm!', {
+        body: task.text,
+        icon: '⏰'
+      });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('Task Alarm!', {
+            body: task.text,
+            icon: '⏰'
+          });
+        }
+      });
+    }
+  }
+}
+
+// Play alarm sound
+function playAlarmSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create multiple tones for a more attention-grabbing alarm
+    const frequencies = [440, 554, 659]; // A, C#, E
+    
+    frequencies.forEach((freq, index) => {
+      setTimeout(() => {
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+        
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.5);
+      }, index * 200);
+    });
+  } catch (e) {
+    console.log('Audio context not available');
+  }
+}
+
+// Render tasks based on filter
+function renderTasks() {
+  todoList.innerHTML = '';
+  
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'active') return !task.completed;
+    if (filter === 'completed') return task.completed;
+    return true;
+  });
+  
+  if (filteredTasks.length === 0) {
+    const emptyMessage = document.createElement('li');
+    emptyMessage.style.cssText = `
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+      font-style: italic;
+      background: transparent;
+    `;
+    emptyMessage.textContent = filter === 'active' ? 
+      'No active tasks. Add one above!' : 
+      'No completed tasks yet.';
+    todoList.appendChild(emptyMessage);
+    return;
+  }
+  
+  filteredTasks.forEach(task => {
+    const taskEl = createTaskElement(task);
+    todoList.appendChild(taskEl);
+  });
+}
+
+// Close alarm picker when clicking outside
+document.addEventListener('click', (e) => {
+  if (alarmPicker && !alarmPicker.contains(e.target) && e.target !== alarmBtn) {
+    cancelAlarm();
+  }
+  
+  // Close task alarm pickers when clicking outside
+  Object.keys(taskAlarmPickers).forEach(taskId => {
+    const picker = taskAlarmPickers[taskId];
+    if (picker && !picker.contains(e.target) && !e.target.closest('.task-button.alarm-btn')) {
+      cancelTaskAlarm(parseInt(taskId));
+    }
+  });
+});
+
+// Request notification permission on load
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
+
+// Initial render
+renderTasks();
+</script>
+</body>
+</html>
